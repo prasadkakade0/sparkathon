@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique // This maps to Clerk's user ID
+  email     String   @unique
+  name      String?
+  avatar    String?
+
+  // Pod memberships
+  podMemberships PodMember[]
+  
+  // Owned pods
+  ownedPods ShoppingPod[] @relation("PodOwner")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ShoppingPod {
+  id          String   @id @default(cuid())
+  name        String
+  inviteCode  String   @unique
+  ownerId     String
+  owner       User     @relation("PodOwner", fields: [ownerId], references: [id])
+  
+  // Pod members
+  members     PodMember[]
+  
+  // Pod items
+  items       PodItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PodMember {
+  id        String      @id @default(cuid())
+  podId     String
+  userId    String
+  isOwner   Boolean     @default(false)
+  joinedAt  DateTime    @default(now())
+  
+  pod       ShoppingPod @relation(fields: [podId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([podId, userId])
+}
+
+model PodItem {
+  id        String      @id @default(cuid())
+  podId     String
+  productId String
+  name      String
+  price     Float
+  quantity  Int         @default(1)
+  addedById String
+  addedAt   DateTime    @default(now())
+  
+  pod       ShoppingPod @relation(fields: [podId], references: [id], onDelete: Cascade)
+  
+  @@unique([podId, productId])
+}
